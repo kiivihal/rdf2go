@@ -170,8 +170,8 @@ func (g *Graph) All(s Term, p Term, o Term) []*Triple {
 }
 
 // Merge is used to add all the triples form another graph to this one
-func (g *Graph) Merge(toMerge *Graph){
-	for triple := range toMerge.IterTriples(){
+func (g *Graph) Merge(toMerge *Graph) {
+	for triple := range toMerge.IterTriples() {
 		g.Add(triple)
 	}
 }
@@ -291,6 +291,140 @@ func (g *Graph) serializeTurtle(w io.Writer) error {
 		}
 
 	}
+
+	return nil
+}
+
+type LdEntry struct {
+	ID         string                 `json:"@id"`
+	Types      []string               `json:"@type,omitempty"`
+	Predicates map[string][]*LdObject `json:""`
+}
+
+type LdObject struct {
+	ID       string `json:"@id,omitempty"`
+	Value    string `json:"@value,omitempty"`
+	Language string `json:"@language,omitempty"`
+	Datatype string `json:"@type,omitempty"`
+}
+
+func (lde *LdEntry) AsEntry() map[string]interface{} {
+	m := map[string]interface{}{}
+	m["@id"] = lde.ID
+	if len(lde.Types) > 0 {
+		m["@type"] = lde.Types
+	}
+	for k, p := range lde.Predicates {
+		m[k] = p
+	}
+	return m
+}
+
+// GenerateJSONLD creates a interfaggce based model of the RDF Graph.
+// This can be used to create various JSON-LD output formats, e.g.
+// expand, flatten, compacted, etc.
+func (g *Graph) GenerateJSONLD() ([]map[string]interface{}, error) {
+	m := map[string]*LdEntry{}
+	entries := []map[string]interface{}{}
+
+	for t := range g.IterTriples() {
+		err := AppendTriple(m, t)
+		if err != nil {
+			return entries, err
+		}
+	}
+	for _, v := range m {
+		entries = append(entries, v.AsEntry())
+	}
+	return entries, nil
+}
+
+func (g *Graph) SerializeFlatJSONLD(w io.Writer) error {
+	entries, err := g.GenerateJSONLD()
+	if err != nil {
+		return err
+	}
+	bytes, err := json.Marshal(entries)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(w, string(bytes))
+	return nil
+}
+
+func (t *Triple) GetSubjectID() string {
+	return GetResourceID(t.Subject)
+}
+
+func GetResourceID(t Term) string {
+	switch t.(type) {
+	case *BlankNode:
+		return t.(*BlankNode).String()
+	default:
+		return t.(*Resource).URI
+	}
+}
+
+func (t *Triple) GetRDFType() (string, bool) {
+	switch t.Predicate.String() {
+	case NewResource("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").String():
+		return GetResourceID(t.Object), true
+	default:
+		return "", false
+	}
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+// AppendTriple appends a triple to a subject map
+func AppendTriple(subjects map[string]*LdEntry, t *Triple) error {
+	id := t.GetSubjectID()
+	ld, ok := subjects[id]
+	if !ok {
+		ld = &LdEntry{}
+		ld.ID = id
+		subjects[id] = ld
+		ld.Predicates = make(map[string][]*LdObject)
+	}
+	ttype, ok := t.GetRDFType()
+	if ok {
+		if !contains(ld.Types, ttype) {
+			ld.Types = append(ld.Types, ttype)
+		}
+		return nil
+	}
+
+	p := GetResourceID(t.Predicate)
+	predicates, ok := ld.Predicates[p]
+	if !ok {
+		predicates = []*LdObject{}
+	}
+	switch o := t.Object.(type) {
+	case *Resource:
+		// TODO check for duplicates
+		ldo := LdObject{}
+		ldo.ID = GetResourceID(o)
+		predicates = append(predicates, &ldo)
+	case *Literal:
+		ldo := LdObject{}
+		ldo.Value = o.Value
+		if o.Datatype != nil && len(o.Datatype.String()) > 0 {
+			ldo.Datatype = debrack(o.Datatype.String())
+		}
+		if len(o.Language) > 0 {
+			ldo.Language = o.Language
+
+		}
+		predicates = append(predicates, &ldo)
+	}
+	ld.Predicates[p] = predicates
 
 	return nil
 }
