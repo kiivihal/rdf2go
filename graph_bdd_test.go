@@ -25,7 +25,7 @@ var _ = Describe("Graph", func() {
 				body, err := g.GenerateJSONLD()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(body).ToNot(BeNil())
-				Expect(body).To(HaveLen(4))
+				Expect(body).To(HaveLen(5))
 
 				var buf bytes.Buffer
 				g.SerializeFlatJSONLD(&buf)
@@ -50,7 +50,7 @@ var _ = Describe("Graph", func() {
 
 				It("should extract the subject ID of a BlankNode", func() {
 					t := NewTriple(
-						NewBlankNode(10),
+						NewBlankNode("n10"),
 						NewResource("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
 						NewResource("http://example.org/vocab#Chapter"),
 					)
@@ -119,7 +119,7 @@ var _ = Describe("Graph", func() {
 				It("should append predicates", func() {
 					m := map[string]*LdEntry{}
 
-					s := NewBlankNode(10)
+					s := NewBlankNode("n10")
 					p := "http://example.org/vocab#contains"
 					o := "http://example.org/vocab#Chapter"
 					t := NewTriple(
