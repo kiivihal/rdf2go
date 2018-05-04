@@ -407,7 +407,7 @@ func AppendTriple(subjects map[string]*LdEntry, t *Triple) error {
 		predicates = []*LdObject{}
 	}
 	switch o := t.Object.(type) {
-	case *Resource:
+	case *Resource, *BlankNode:
 		// TODO check for duplicates
 		ldo := LdObject{}
 		ldo.ID = GetResourceID(o)
@@ -416,7 +416,9 @@ func AppendTriple(subjects map[string]*LdEntry, t *Triple) error {
 		ldo := LdObject{}
 		ldo.Value = o.Value
 		if o.Datatype != nil && len(o.Datatype.String()) > 0 {
-			ldo.Datatype = debrack(o.Datatype.String())
+			if o.Datatype.String() != "<http://www.w3.org/2001/XMLSchema#string>" {
+				ldo.Datatype = debrack(o.Datatype.String())
+			}
 		}
 		if len(o.Language) > 0 {
 			ldo.Language = o.Language
