@@ -348,7 +348,7 @@ func (g *Graph) SerializeFlatJSONLD(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(w, string(bytes))
+	fmt.Fprint(w, string(bytes))
 	return nil
 }
 
