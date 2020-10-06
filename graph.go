@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	rdf "github.com/deiu/gon3"
-	jsonld "github.com/linkeddata/gojsonld"
+	jsonld "github.com/kiivihal/gojsonld"
 )
 
 // Graph structure

@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	rdf "github.com/deiu/gon3"
-	jsonld "github.com/linkeddata/gojsonld"
+	jsonld "github.com/kiivihal/gojsonld"
 )
 
 // A Term is the value of a subject, predicate or object i.e. a IRI reference, blank node or
